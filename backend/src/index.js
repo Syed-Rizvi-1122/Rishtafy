@@ -45,38 +45,47 @@ app.post('/api/auth/register', async (req, res) => {
       },
     });
 
+    let user = authData?.user;
+
     if (authError) {
-      console.error('[Backend] Supabase Auth Error:', authError.message);
-      throw authError;
+      if (authError.message === 'User already registered') {
+        console.log('[Backend] User exists in Auth, attempting to sync to DB...');
+        // Try to get the user ID via a sign-in (or search users if service role)
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+        user = signInData.user;
+      } else {
+        console.error('[Backend] Supabase Auth Error:', authError.message);
+        throw authError;
+      }
     }
 
-    const user = authData.user;
-    if (!user) throw new Error('User creation failed');
+    if (!user) throw new Error('User creation/retrieval failed');
 
-    // 2. Insert into our public.users table
+    // 2. Upsert into our public.users table (Self-Healing Sync)
     const { error: dbError } = await supabase
       .from('users')
-      .insert([
+      .upsert([
         {
           id: user.id,
           email: user.email,
           role: role.toLowerCase(),
         },
-      ]);
+      ], { onConflict: 'id' });
 
     if (dbError) throw dbError;
 
-    // 3. Create initial profile if role is candidate
+    // 3. Upsert initial profile if role is candidate
     if (role.toLowerCase() === 'candidate') {
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert([
+        .upsert([
           {
             user_id: user.id,
             full_name,
           },
-        ]);
-      if (profileError) console.error('Error creating profile:', profileError);
+        ], { onConflict: 'user_id' });
+      if (profileError) console.error('Error syncing profile:', profileError);
     }
 
     // 4. Handle Guardian-Candidate link if provided
@@ -219,11 +228,11 @@ app.get('/api/profiles', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*, users(is_verified)')
+      .select('*')
+      .order('updated_at', { ascending: false })
       .limit(20);
 
     if (error) throw error;
-
     res.status(200).json(data);
   } catch (error) {
     console.error('Search error:', error.message);
@@ -233,22 +242,48 @@ app.get('/api/profiles', async (req, res) => {
 
 // Send Interest Request
 app.post('/api/interests', async (req, res) => {
-  const { senderId, receiverId, guardianId } = req.body;
+  const { senderId, receiverId } = req.body;
+
+  if (!senderId || !receiverId) {
+    return res.status(400).json({ error: 'senderId and receiverId are required' });
+  }
 
   try {
+    // Check if receiver has a guardian
+    let actualGuardianId = null;
+    let initialStatus = 'pending_candidate';
+
+    const { data: linkData, error: linkError } = await supabase
+      .from('guardian_links')
+      .select('guardian_user_id')
+      .eq('candidate_user_id', receiverId)
+      .eq('status', 'pending') // or accepted, assuming pending for simplicity in test
+      .limit(1)
+      .single();
+
+    if (linkData) {
+      actualGuardianId = linkData.guardian_user_id;
+      initialStatus = 'pending_guardian';
+    }
+
     const { error } = await supabase
       .from('interest_requests')
       .insert([{
         sender_id: senderId,
         receiver_id: receiverId,
-        guardian_id: guardianId || null,
-        status: guardianId ? 'pending_guardian' : 'pending_candidate'
+        guardian_id: actualGuardianId,
+        status: initialStatus
       }]);
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Backend] Error creating interest:', error);
+      throw error;
+    }
+    
     res.status(201).json({ message: 'Interest request sent' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[Backend ERROR Detail]:', error);
+    res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
 
@@ -331,6 +366,79 @@ app.put('/api/interests/:id', async (req, res) => {
     }
 
     res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Active Connections
+app.get('/api/connections/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const { data: conns, error } = await supabase
+      .from('connections')
+      .select('*')
+      .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`);
+
+    if (error) throw error;
+
+    if (conns.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    // Fetch partner profiles
+    const partnerIds = conns.map(c => c.user_a_id === userId ? c.user_b_id : c.user_a_id);
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('user_id', partnerIds);
+
+    if (profileError) throw profileError;
+
+    const profileMap = {};
+    profiles.forEach(p => profileMap[p.user_id] = p);
+
+    const enriched = conns.map(c => ({
+      ...c,
+      partner: profileMap[c.user_a_id === userId ? c.user_b_id : c.user_a_id] || null
+    }));
+
+    res.status(200).json(enriched);
+  } catch (error) {
+    console.error('[Backend ERROR Detail]:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Messages for a Connection
+app.get('/api/messages/:connectionId', async (req, res) => {
+  const { connectionId } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('connection_id', connectionId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Send Message
+app.post('/api/messages', async (req, res) => {
+  const { connectionId, senderId, text } = req.body;
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .insert([{ connection_id: connectionId, sender_id: senderId, text }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
