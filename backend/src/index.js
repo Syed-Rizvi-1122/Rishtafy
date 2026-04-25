@@ -176,42 +176,37 @@ app.put('/api/profiles/:userId', async (req, res) => {
   const profileData = req.body;
 
   try {
-    // Create base payload
     const updatePayload = {
+      user_id: userId,
       full_name: profileData.name,
-      age: profileData.age ? parseInt(profileData.age) : null,
+      age: isNaN(parseInt(profileData.age)) ? null : parseInt(profileData.age),
       city: profileData.city || null,
       education: profileData.education || null,
       profession: profileData.profession || null,
       religious_values: profileData.religiousValues || null,
       bio: profileData.aboutMe || null,
-      partner_pref_age_min: profileData.partnerAgeMin ? parseInt(profileData.partnerAgeMin) : 18,
-      partner_pref_age_max: profileData.partnerAgeMax ? parseInt(profileData.partnerAgeMax) : 70,
+      partner_pref_age_min: isNaN(parseInt(profileData.partnerAgeMin)) ? 18 : parseInt(profileData.partnerAgeMin),
+      partner_pref_age_max: isNaN(parseInt(profileData.partnerAgeMax)) ? 70 : parseInt(profileData.partnerAgeMax),
       partner_pref_city: profileData.partnerCity || 'Any',
       partner_pref_education: profileData.partnerEducation || 'Any',
       updated_at: new Date().toISOString()
     };
 
-    // Only add gender if it is truly needed and doesn't crash the cache
-    // For now, we skip it to ensure Sprint 1 completes.
-    
-    console.log('[Backend] Attempting update for user:', userId);
+    console.log('[Backend] Upserting profile for user:', userId);
 
     const { data, error } = await supabase
       .from('profiles')
-      .update(updatePayload)
-      .eq('user_id', userId)
-      .select()
-      .single();
+      .upsert(updatePayload, { onConflict: 'user_id' })
+      .select();
 
     if (error) {
-      console.error('[Backend] DB Update Error:', error.message);
+      console.error('[Backend] DB Upsert Error:', error.message);
       throw error;
     }
 
     res.status(200).json({
       message: 'Profile updated successfully',
-      profile: data
+      profile: data ? data[0] : null
     });
   } catch (error) {
     console.error('[Backend ERROR Detail]:', error);
@@ -236,11 +231,120 @@ app.get('/api/profiles', async (req, res) => {
   }
 });
 
+// Send Interest Request
+app.post('/api/interests', async (req, res) => {
+  const { senderId, receiverId, guardianId } = req.body;
+
+  try {
+    const { error } = await supabase
+      .from('interest_requests')
+      .insert([{
+        sender_id: senderId,
+        receiver_id: receiverId,
+        guardian_id: guardianId || null,
+        status: guardianId ? 'pending_guardian' : 'pending_candidate'
+      }]);
+
+    if (error) throw error;
+    res.status(201).json({ message: 'Interest request sent' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get User Requests
+app.get('/api/interests/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const { data: requests, error } = await supabase
+      .from('interest_requests')
+      .select('*')
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId},guardian_id.eq.${userId}`);
+
+    if (error) throw error;
+
+    // Fetch all profiles involved
+    const profileIds = new Set();
+    requests.forEach(r => {
+      if (r.sender_id) profileIds.add(r.sender_id);
+      if (r.receiver_id) profileIds.add(r.receiver_id);
+    });
+
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('user_id', Array.from(profileIds));
+
+    if (profileError) throw profileError;
+
+    const profilesMap = {};
+    if (profiles) {
+      profiles.forEach(p => profilesMap[p.user_id] = p);
+    }
+
+    const enrichedRequests = requests.map(r => ({
+      ...r,
+      sender: profilesMap[r.sender_id] || null,
+      receiver: profilesMap[r.receiver_id] || null
+    }));
+
+    console.log(`[Backend] Found ${enrichedRequests.length} requests for user ${userId}`);
+    res.status(200).json(enrichedRequests);
+  } catch (error) {
+    console.error('Fetch interests error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update Interest Request (Approve, Decline, Accept)
+app.put('/api/interests/:id', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    const { data: request, error: fetchError } = await supabase
+      .from('interest_requests')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const { data, error } = await supabase
+      .from('interest_requests')
+      .update({ status })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // If accepted, create a connection
+    if (status === 'accepted') {
+      const { error: connError } = await supabase
+        .from('connections')
+        .insert([{
+          user_a_id: request.sender_id,
+          user_b_id: request.receiver_id
+        }]);
+      if (connError) console.error('Error creating connection:', connError);
+    }
+
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+export default app;
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}

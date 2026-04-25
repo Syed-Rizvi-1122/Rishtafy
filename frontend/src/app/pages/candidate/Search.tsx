@@ -31,6 +31,28 @@ export default function Search() {
     }
   };
 
+  const handleSendInterest = async (receiverId: string) => {
+    if (!user) return;
+    try {
+      const response = await fetch('http://localhost:3001/api/interests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: user.id,
+          receiverId: receiverId
+        })
+      });
+      if (response.ok) {
+        alert('Interest request sent successfully!');
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to send interest.');
+      }
+    } catch (err) {
+      alert('Could not connect to server.');
+    }
+  };
+
   const updateFilter = (field: string, value: string) => setFilters(f => ({ ...f, [field]: value }));
 
   const applyFilters = (e: React.FormEvent) => {
@@ -159,6 +181,7 @@ export default function Search() {
                   photoUrl: profile.photo_path
                 }}
                 isConnected={false}
+                onSendInterest={handleSendInterest}
               />
             ))}
           </div>

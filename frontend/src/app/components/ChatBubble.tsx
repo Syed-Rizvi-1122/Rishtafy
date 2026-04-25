@@ -19,8 +19,8 @@ export function ChatBubble({ message, isOwn }: ChatBubbleProps) {
           className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
           style={
             isOwn
-              ? { backgroundColor: '#C5A55A', color: 'white', borderBottomRightRadius: '4px' }
-              : { backgroundColor: 'white', color: '#1A1A1A', border: '1px solid #E5E1D8', borderBottomLeftRadius: '4px' }
+              ? { backgroundColor: 'var(--color-accent-500)', color: 'white', borderBottomRightRadius: '4px' }
+              : { backgroundColor: 'white', color: '#1A1A1A', border: '1px solid var(--color-neutral-100)', borderBottomLeftRadius: '4px' }
           }
         >
           {message.text}
