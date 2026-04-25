@@ -22,6 +22,8 @@ export default function Search() {
       const response = await fetch('http://localhost:3001/api/profiles');
       const data = await response.json();
       if (response.ok) {
+        console.log(`[Search Telemetry] Received ${data.length} profiles from API`);
+        console.log(`[Search Telemetry] Profile Names: ${data.map((p: any) => p.full_name).join(', ')}`);
         setProfiles(data);
       }
     } catch (err) {

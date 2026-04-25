@@ -69,7 +69,7 @@ export function RequestCard({ request, type, onAccept, onDecline }: RequestCardP
       </div>
 
       {/* Actions for received requests */}
-      {type === 'received' && (request.status === 'pending' || request.status === 'approved_by_guardian') && onAccept && onDecline && (
+      {type === 'received' && request.status === 'pending_candidate' && onAccept && onDecline && (
         <div className="flex gap-2 mt-3 pt-3 border-t" style={{ borderColor: 'var(--color-neutral-100)' }}>
           <button
             onClick={() => onAccept(request.id)}

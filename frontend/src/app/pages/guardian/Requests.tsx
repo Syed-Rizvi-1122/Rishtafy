@@ -30,15 +30,35 @@ export default function GuardianRequests() {
   };
 
   const handleApprove = async (id: string) => {
-    // TODO: Implement Update Request API
-    setRequests(prev => prev.filter(r => r.id !== id));
-    setReviewed(prev => [...prev, { id, action: 'approved' }]);
+    try {
+      const response = await fetch(`http://localhost:3001/api/interests/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'pending_candidate' })
+      });
+      if (response.ok) {
+        setRequests(prev => prev.filter(r => r.id !== id));
+        setReviewed(prev => [...prev, { id, action: 'approved' }]);
+      }
+    } catch (err) {
+      console.error('Error approving request:', err);
+    }
   };
 
   const handleDecline = async (id: string) => {
-    // TODO: Implement Update Request API
-    setRequests(prev => prev.filter(r => r.id !== id));
-    setReviewed(prev => [...prev, { id, action: 'declined' }]);
+    try {
+      const response = await fetch(`http://localhost:3001/api/interests/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'declined' })
+      });
+      if (response.ok) {
+        setRequests(prev => prev.filter(r => r.id !== id));
+        setReviewed(prev => [...prev, { id, action: 'declined' }]);
+      }
+    } catch (err) {
+      console.error('Error declining request:', err);
+    }
   };
 
   return (

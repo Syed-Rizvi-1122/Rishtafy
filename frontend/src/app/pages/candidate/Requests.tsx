@@ -36,13 +36,34 @@ export default function Requests() {
   const pendingCount = received.filter(r => r.status === 'pending_candidate' || r.status === 'pending_guardian').length;
 
   const handleAccept = async (id: string) => {
-    // TODO: Implement Accept API
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'accepted' as const } : r));
+    try {
+      const response = await fetch(`http://localhost:3001/api/interests/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'accepted' })
+      });
+      if (response.ok) {
+        setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'accepted' as const } : r));
+        alert('Match accepted! You can now find this person in your Connections.');
+      }
+    } catch (err) {
+      console.error('Error accepting request:', err);
+    }
   };
 
   const handleDecline = async (id: string) => {
-    // TODO: Implement Decline API
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'declined' as const } : r));
+    try {
+      const response = await fetch(`http://localhost:3001/api/interests/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'declined' })
+      });
+      if (response.ok) {
+        setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'declined' as const } : r));
+      }
+    } catch (err) {
+      console.error('Error declining request:', err);
+    }
   };
 
   return (
