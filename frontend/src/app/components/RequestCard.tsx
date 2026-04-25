@@ -9,9 +9,9 @@ interface RequestCardProps {
   onDecline?: (id: string) => void;
 }
 
-const statusConfig: Record<RequestStatus, { label: string; color: string; bg: string; icon: typeof Clock }> = {
-  pending: { label: 'Pending', color: '#92400E', bg: '#FEF3C7', icon: Clock },
-  approved_by_guardian: { label: 'Awaiting Your Response', color: '#1D4ED8', bg: '#DBEAFE', icon: Eye },
+const statusConfig: any = {
+  pending_guardian: { label: 'Pending Guardian Review', color: '#92400E', bg: '#FEF3C7', icon: Clock },
+  pending_candidate: { label: 'Awaiting Your Response', color: '#1D4ED8', bg: '#DBEAFE', icon: Eye },
   accepted: { label: 'Accepted', color: '#166534', bg: '#DCFCE7', icon: CheckCircle },
   declined: { label: 'Declined', color: '#991B1B', bg: '#FEE2E2', icon: XCircle },
 };
@@ -20,11 +20,11 @@ export function RequestCard({ request, type, onAccept, onDecline }: RequestCardP
   const profile = type === 'sent' ? request.receiverProfile : request.senderProfile;
   if (!profile) return null;
 
-  const status = statusConfig[request.status];
+  const status = statusConfig[request.status] || statusConfig.pending_guardian;
   const StatusIcon = status.icon;
 
   return (
-    <div className="bg-white rounded-xl border p-4 shadow-sm" style={{ borderColor: '#E5E1D8' }}>
+    <div className="bg-white rounded-xl border p-4 shadow-sm request-card" style={{ borderColor: 'var(--color-neutral-100)' }}>
       <div className="flex items-start gap-4">
         {/* Photo */}
         <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 bg-gray-100">
@@ -35,7 +35,7 @@ export function RequestCard({ request, type, onAccept, onDecline }: RequestCardP
               className={`w-full h-full object-cover ${request.status !== 'accepted' && type === 'sent' ? 'blur-md' : ''}`}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center font-playfair text-lg" style={{ backgroundColor: '#1B3B2D', color: '#C5A55A' }}>
+            <div className="w-full h-full flex items-center justify-center font-playfair text-lg" style={{ backgroundColor: 'var(--color-primary-900)', color: 'var(--color-accent-500)' }}>
               {profile.name.charAt(0)}
             </div>
           )}
@@ -44,12 +44,12 @@ export function RequestCard({ request, type, onAccept, onDecline }: RequestCardP
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <h4 className="font-medium text-sm" style={{ color: '#1B3B2D' }}>
+            <h4 className="font-medium text-sm" style={{ color: 'var(--color-primary-900)' }}>
               {profile.name}, {profile.age}
             </h4>
             {profile.isVerified && <BadgeCheck size={14} fill="#16A34A" color="#16A34A" />}
           </div>
-          <div className="flex items-center gap-3 text-xs flex-wrap mb-2" style={{ color: '#6B7280' }}>
+          <div className="flex items-center gap-3 text-xs flex-wrap mb-2" style={{ color: 'var(--color-neutral-400)' }}>
             <span className="flex items-center gap-1"><MapPin size={11} />{profile.city}</span>
             <span className="flex items-center gap-1"><GraduationCap size={11} />{profile.profession}</span>
           </div>
@@ -70,11 +70,11 @@ export function RequestCard({ request, type, onAccept, onDecline }: RequestCardP
 
       {/* Actions for received requests */}
       {type === 'received' && (request.status === 'pending' || request.status === 'approved_by_guardian') && onAccept && onDecline && (
-        <div className="flex gap-2 mt-3 pt-3 border-t" style={{ borderColor: '#E5E1D8' }}>
+        <div className="flex gap-2 mt-3 pt-3 border-t" style={{ borderColor: 'var(--color-neutral-100)' }}>
           <button
             onClick={() => onAccept(request.id)}
             className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors text-white"
-            style={{ backgroundColor: '#1B3B2D' }}
+            style={{ backgroundColor: 'var(--color-primary-900)' }}
           >
             Accept
           </button>
@@ -88,7 +88,7 @@ export function RequestCard({ request, type, onAccept, onDecline }: RequestCardP
           <Link
             to={`/profile/${profile.userId}`}
             className="flex-1 py-2 rounded-lg text-sm font-medium text-center border transition-colors no-underline"
-            style={{ color: '#1B3B2D', borderColor: '#E5E1D8' }}
+            style={{ color: 'var(--color-primary-900)', borderColor: 'var(--color-neutral-100)' }}
           >
             View Profile
           </Link>
