@@ -33,38 +33,52 @@ if (supabaseServiceKey.startsWith('sb_secret') || supabaseServiceKey.length > 50
 
 // Registration Route
 app.post('/api/auth/register', async (req, res) => {
-  const { email, password, full_name, role, candidateEmail } = req.body;
+  const { email, password, full_name, role, candidateEmail, isExternal } = req.body;
 
-  if (!email || !password || !full_name || !role) {
+  if (!email || (!password && !isExternal) || !full_name || !role) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
-    console.log(`[Backend] Registering user: ${email} with role: ${role}`);
+    console.log(`[Backend] Registering ${isExternal ? 'External ' : ''}user: ${email} with role: ${role}`);
     
-    // Use auth.admin to create user without modifying the global client session
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        full_name,
-        role,
-      },
-    });
+    let user;
 
-    let user = authData?.user;
+    if (isExternal) {
+      // User already exists in Supabase Auth via Google
+      // Just find them to get their ID
+      const { data: usersData, error: searchError } = await supabase.auth.admin.listUsers();
+      if (searchError) throw searchError;
+      user = usersData.users.find(u => u.email === email);
+      
+      if (user) {
+        // Update their metadata with name and role
+        await supabase.auth.admin.updateUserById(user.id, {
+          user_metadata: { full_name, role }
+        });
+      }
+    } else {
+      // Standard email/password registration
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          full_name,
+          role,
+        },
+      });
 
-    if (authError) {
-      if (authError.message.includes('already registered')) {
-        console.log('[Backend] User exists in Auth, attempting to sync to DB...');
-        // Find existing user via admin API
-        const { data: usersData, error: searchError } = await supabase.auth.admin.listUsers();
-        if (searchError) throw searchError;
-        user = usersData.users.find(u => u.email === email);
+      if (authError) {
+        if (authError.message.includes('already registered')) {
+          const { data: usersData, error: searchError } = await supabase.auth.admin.listUsers();
+          if (searchError) throw searchError;
+          user = usersData.users.find(u => u.email === email);
+        } else {
+          throw authError;
+        }
       } else {
-        console.error('[Backend] Supabase Auth Error:', authError.message);
-        throw authError;
+        user = authData.user;
       }
     }
 
@@ -136,36 +150,29 @@ app.post('/api/auth/register', async (req, res) => {
 
 // Login Route
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, isExternal } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Missing email or password' });
+  if (!email || !isExternal) {
+    return res.status(400).json({ error: 'Only Google Sign-In is supported.' });
+  }
+
+  if (password) {
+    return res.status(403).json({ error: 'Manual password login is disabled.' });
   }
 
   try {
-    // Create a temporary client just for verifying the password so we don't pollute the global service_role client
-    const tempClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false }
-    });
-    
-    const { data: authData, error: authError } = await tempClient.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (authError) throw authError;
-
-    const user = authData.user;
-    if (!user) throw new Error('Login failed');
-
-    // Fetch user role using the global admin client
+    // For OAuth users (Google), we assume Supabase has already verified them
+    // We just fetch their role and profile from our DB
     const { data: userData, error: dbError } = await supabase
       .from('users')
-      .select('role, is_verified, is_active')
-      .eq('id', user.id)
+      .select('*')
+      .eq('email', email)
       .single();
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      // If user doesn't exist in our DB yet, they might be a first-time Google sign-in
+      return res.status(404).json({ error: 'Account not found. Please register first.' });
+    }
 
     if (!userData.is_active) {
       return res.status(403).json({ error: 'Account is deactivated. Contact support.' });
@@ -174,9 +181,9 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(200).json({
       message: 'Login successful',
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.user_metadata.full_name,
+        id: userData.id,
+        email: userData.email,
+        name: userData.full_name || email.split('@')[0],
         role: userData.role,
         isVerified: userData.is_verified,
         isActive: userData.is_active,
@@ -184,7 +191,7 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error.message);
-    res.status(401).json({ error: 'Invalid email or password' });
+    res.status(500).json({ error: 'Internal server error during login.' });
   }
 });
 
