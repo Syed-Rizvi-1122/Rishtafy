@@ -45,9 +45,12 @@ export default function Requests() {
       if (response.ok) {
         setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'accepted' as const } : r));
         alert('Match accepted! You can now find this person in your Connections.');
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Could not accept request'}`);
       }
     } catch (err) {
-      console.error('Error accepting request:', err);
+      alert('Could not connect to server.');
     }
   };
 
@@ -60,9 +63,12 @@ export default function Requests() {
       });
       if (response.ok) {
         setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'declined' as const } : r));
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Could not decline request'}`);
       }
     } catch (err) {
-      console.error('Error declining request:', err);
+      alert('Could not connect to server.');
     }
   };
 

@@ -209,10 +209,10 @@ export default function Chat() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4" style={{ backgroundColor: 'var(--color-neutral-50)' }}>
             {loading ? (
-                <div className="text-center py-10 text-sm" style={{ color: 'var(--color-neutral-400)' }}>Loading messages...</div>
+              <div className="text-center py-10 text-sm" style={{ color: 'var(--color-neutral-400)' }}>Loading messages...</div>
             ) : messages.length === 0 ? (
               <div className="text-center py-10">
-                <p className="text-sm mb-1" style={{ color: '#9CA3AF' }}>No messages yet</p>
+                <p className="text-sm mb-1" style={{ color: 'var(--color-neutral-400)' }}>No messages yet</p>
                 <p className="text-xs" style={{ color: 'var(--color-accent-500)' }}>Start the conversation with Bismillah 🌿</p>
               </div>
             ) : (
@@ -223,7 +223,7 @@ export default function Chat() {
                      <div key={msg.id}>
                         {showDate && (
                           <div className="flex justify-center my-4">
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 font-medium">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-var(--color-neutral-400) font-medium">
                               {new Date(msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                             </span>
                           </div>
@@ -245,11 +245,11 @@ export default function Chat() {
             {isPartnerTyping && (
               <div className="flex items-center gap-2 mt-2 px-2 animate-pulse">
                 <div className="flex gap-1">
-                  <div className="w-1 h-1 rounded-full bg-gray-400" />
-                  <div className="w-1 h-1 rounded-full bg-gray-400" />
-                  <div className="w-1 h-1 rounded-full bg-gray-400" />
+                  <div className="w-1 h-1 rounded-full bg-var(--color-neutral-400)" />
+                  <div className="w-1 h-1 rounded-full bg-var(--color-neutral-400)" />
+                  <div className="w-1 h-1 rounded-full bg-var(--color-neutral-400)" />
                 </div>
-                <span className="text-[10px] text-gray-400 italic">{partner?.full_name?.split(' ')[0]} is typing...</span>
+                <span className="text-[10px] text-var(--color-neutral-400) italic">{partner?.full_name?.split(' ')[0]} is typing...</span>
               </div>
             )}
             

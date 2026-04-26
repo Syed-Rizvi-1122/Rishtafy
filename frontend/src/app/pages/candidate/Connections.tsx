@@ -44,18 +44,18 @@ export default function Connections() {
         </div>
 
         {loading ? (
-          <div className="text-center py-20">Loading connections...</div>
+          <div className="text-center py-20 text-var(--color-neutral-400)">Loading connections...</div>
         ) : connections.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(27,59,45,0.07)' }}>
-              <Users size={24} color="#9CA3AF" />
+          <div className="text-center py-24 bg-white rounded-3xl border border-dashed flex flex-col items-center" style={{ borderColor: 'var(--color-neutral-200)' }}>
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: 'var(--color-accent-50)' }}>
+              <Users size={32} color="var(--color-primary-900)" className="opacity-20" />
             </div>
-            <p className="font-playfair text-xl mb-2" style={{ color: 'var(--color-primary-900)' }}>No connections yet</p>
-            <p className="text-sm mb-5" style={{ color: 'var(--color-neutral-400)' }}>
-              When you and another candidate mutually accept interest, you'll be connected here.
+            <p className="font-playfair text-2xl mb-3" style={{ color: 'var(--color-primary-900)' }}>Your circle is ready to grow</p>
+            <p className="text-sm mb-8 max-w-xs mx-auto leading-relaxed" style={{ color: 'var(--color-neutral-400)' }}>
+              When you and another candidate mutually accept interest, your secure connection will appear here.
             </p>
-            <Link to="/search" className="inline-block px-5 py-2.5 rounded-xl text-sm text-white font-medium no-underline" style={{ backgroundColor: 'var(--color-primary-900)' }}>
-              Find Matches
+            <Link to="/search" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm text-white font-medium no-underline shadow-md transition-all hover:scale-105" style={{ backgroundColor: 'var(--color-primary-900)' }}>
+              Explore Profiles
             </Link>
           </div>
         ) : (

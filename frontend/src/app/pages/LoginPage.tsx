@@ -72,9 +72,9 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: '#374151' }}>Email Address</label>
+                <label className="block text-sm mb-1.5" style={{ color: 'var(--color-neutral-900)' }}>Email Address</label>
                 <div className="relative">
-                  <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+                  <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-neutral-400)' }} />
                   <input
                     type="email"
                     value={email}
@@ -89,9 +89,9 @@ export default function LoginPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: '#374151' }}>Password</label>
+                <label className="block text-sm mb-1.5" style={{ color: 'var(--color-neutral-900)' }}>Password</label>
                 <div className="relative">
-                  <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+                  <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-neutral-400)' }} />
                   <input
                     type={showPwd ? 'text' : 'password'}
                     value={password}
@@ -107,7 +107,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowPwd(!showPwd)}
                     className="absolute right-3 top-1/2 -translate-y-1/2"
-                    style={{ color: '#9CA3AF' }}
+                    style={{ color: 'var(--color-neutral-400)' }}
                   >
                     {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
@@ -133,7 +133,7 @@ export default function LoginPage() {
 
           {/* Demo Accounts */}
           <div className="mt-6 bg-white rounded-2xl border p-5" style={{ borderColor: 'var(--color-neutral-100)' }}>
-            <p className="text-xs font-medium mb-3 text-center tracking-wider uppercase" style={{ color: '#9CA3AF' }}>Quick Demo Access</p>
+            <p className="text-xs font-medium mb-3 text-center tracking-wider uppercase" style={{ color: 'var(--color-neutral-400)' }}>Quick Demo Access</p>
             <div className="grid grid-cols-1 gap-2">
               {[
                 { label: '🧑 Candidate (Farhan)', email: 'candidate@demo.com', role: 'Candidate view' },
@@ -146,14 +146,14 @@ export default function LoginPage() {
                   onClick={() => quickLogin(demoEmail)}
                   disabled={loading}
                   className="flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-all hover:border-opacity-60 text-sm disabled:opacity-50"
-                  style={{ borderColor: 'var(--color-neutral-100)', color: '#374151' }}
+                  style={{ borderColor: 'var(--color-neutral-100)', color: 'var(--color-neutral-900)' }}
                 >
                   <span>{label}</span>
-                  <span className="text-xs" style={{ color: '#9CA3AF' }}>{role}</span>
+                  <span className="text-xs" style={{ color: 'var(--color-neutral-400)' }}>{role}</span>
                 </button>
               ))}
             </div>
-            <p className="text-xs text-center mt-3" style={{ color: '#9CA3AF' }}>Password: password123</p>
+            <p className="text-xs text-center mt-3" style={{ color: 'var(--color-neutral-400)' }}>Password: password123</p>
           </div>
         </div>
       </div>
