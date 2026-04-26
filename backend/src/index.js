@@ -152,57 +152,26 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   const { email, password, isExternal } = req.body;
 
-  if (!email || (!password && !isExternal)) {
-    return res.status(400).json({ error: 'Missing credentials' });
+  if (!email || !isExternal) {
+    return res.status(400).json({ error: 'Only Google Sign-In is supported.' });
+  }
+
+  if (password) {
+    return res.status(403).json({ error: 'Manual password login is disabled.' });
   }
 
   try {
-    let user;
-    let userData;
+    // For OAuth users (Google), we assume Supabase has already verified them
+    // We just fetch their role and profile from our DB
+    const { data: userData, error: dbError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
 
-    if (isExternal) {
-      // For OAuth users (Google), we assume Supabase has already verified them
-      // We just fetch their role and profile from our DB
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .single();
-
-      if (error) {
-        // If user doesn't exist in our DB yet, they might be a first-time Google sign-in
-        // We might need to auto-register them or prompt for role. 
-        // For now, let's assume they exist or we'll handle creation if needed.
-        // Simplified for now: return error if not in DB
-        return res.status(404).json({ error: 'Account not found. Please register first.' });
-      }
-      userData = data;
-      user = { email, id: data.id, user_metadata: { full_name: data.full_name || email.split('@')[0] } };
-    } else {
-      // Create a temporary client just for verifying the password so we don't pollute the global service_role client
-      const tempClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-        auth: { persistSession: false, autoRefreshToken: false }
-      });
-      
-      const { data: authData, error: authError } = await tempClient.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError) throw authError;
-
-      user = authData.user;
-      if (!user) throw new Error('Login failed');
-
-      // Fetch user role using the global admin client
-      const { data: dbData, error: dbError } = await supabase
-        .from('users')
-        .select('role, is_verified, is_active')
-        .eq('id', user.id)
-        .single();
-
-      if (dbError) throw dbError;
-      userData = dbData;
+    if (dbError) {
+      // If user doesn't exist in our DB yet, they might be a first-time Google sign-in
+      return res.status(404).json({ error: 'Account not found. Please register first.' });
     }
 
     if (!userData.is_active) {
@@ -212,9 +181,9 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(200).json({
       message: 'Login successful',
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.user_metadata?.full_name || email.split('@')[0],
+        id: userData.id,
+        email: userData.email,
+        name: userData.full_name || email.split('@')[0],
         role: userData.role,
         isVerified: userData.is_verified,
         isActive: userData.is_active,
@@ -222,7 +191,7 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error.message);
-    res.status(401).json({ error: 'Invalid email or password' });
+    res.status(500).json({ error: 'Internal server error during login.' });
   }
 });
 
