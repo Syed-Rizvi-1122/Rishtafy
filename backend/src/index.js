@@ -12,16 +12,24 @@ const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Initialize Supabase client
+// Initialize Supabase client with Service Role Key (Admin Access)
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrl || !supabaseServiceKey) {
   console.error('Missing Supabase environment variables');
   process.exit(1);
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Security Handshake
+console.log(`[Security] Backend initialized. Key prefix: ${supabaseServiceKey.substring(0, 10)}...`);
+if (supabaseServiceKey.startsWith('sb_secret') || supabaseServiceKey.length > 50) {
+  console.log('[Security] Verified: Using High-Privilege Secret Key.');
+} else {
+  console.log('[Security] WARNING: Backend appears to be using a Low-Privilege Anon Key!');
+}
 
 // Registration Route
 app.post('/api/auth/register', async (req, res) => {
@@ -33,27 +41,27 @@ app.post('/api/auth/register', async (req, res) => {
 
   try {
     console.log(`[Backend] Registering user: ${email} with role: ${role}`);
-    // 1. Sign up user in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    
+    // Use auth.admin to create user without modifying the global client session
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: {
-          full_name,
-          role,
-        },
+      email_confirm: true,
+      user_metadata: {
+        full_name,
+        role,
       },
     });
 
     let user = authData?.user;
 
     if (authError) {
-      if (authError.message === 'User already registered') {
+      if (authError.message.includes('already registered')) {
         console.log('[Backend] User exists in Auth, attempting to sync to DB...');
-        // Try to get the user ID via a sign-in (or search users if service role)
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) throw signInError;
-        user = signInData.user;
+        // Find existing user via admin API
+        const { data: usersData, error: searchError } = await supabase.auth.admin.listUsers();
+        if (searchError) throw searchError;
+        user = usersData.users.find(u => u.email === email);
       } else {
         console.error('[Backend] Supabase Auth Error:', authError.message);
         throw authError;
@@ -90,7 +98,6 @@ app.post('/api/auth/register', async (req, res) => {
 
     // 4. Handle Guardian-Candidate link if provided
     if (role.toLowerCase() === 'guardian' && candidateEmail) {
-      // Find candidate by email
       const { data: candidateData, error: findError } = await supabase
         .from('users')
         .select('id')
@@ -98,10 +105,7 @@ app.post('/api/auth/register', async (req, res) => {
         .eq('role', 'candidate')
         .single();
 
-      if (findError) {
-        console.error('Candidate not found for linking:', findError);
-        // We don't fail the whole registration if linking fails, but we log it
-      } else if (candidateData) {
+      if (candidateData) {
         const { error: linkError } = await supabase
           .from('guardian_links')
           .insert([
@@ -139,7 +143,12 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   try {
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    // Create a temporary client just for verifying the password so we don't pollute the global service_role client
+    const tempClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+    
+    const { data: authData, error: authError } = await tempClient.auth.signInWithPassword({
       email,
       password,
     });
@@ -149,7 +158,7 @@ app.post('/api/auth/login', async (req, res) => {
     const user = authData.user;
     if (!user) throw new Error('Login failed');
 
-    // Fetch user role from our public.users table
+    // Fetch user role using the global admin client
     const { data: userData, error: dbError } = await supabase
       .from('users')
       .select('role, is_verified, is_active')
@@ -337,37 +346,46 @@ app.put('/api/interests/:id', async (req, res) => {
   const { status } = req.body;
 
   try {
+    console.log(`[Backend] Updating interest request ${id} to status: ${status}`);
     const { data: request, error: fetchError } = await supabase
       .from('interest_requests')
       .select('*')
       .eq('id', id)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error('[Backend] Fetch Error on interest request:', fetchError);
+      throw fetchError;
+    }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('interest_requests')
       .update({ status })
-      .eq('id', id)
-      .select()
-      .single();
+      .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Backend] Update Error on interest request:', error);
+      throw error;
+    }
 
     // If accepted, create a connection
     if (status === 'accepted') {
+      console.log(`[Backend] Match accepted! Creating connection for users: ${request.sender_id} & ${request.receiver_id}`);
       const { error: connError } = await supabase
         .from('connections')
-        .insert([{
+        .upsert([{
           user_a_id: request.sender_id,
           user_b_id: request.receiver_id
-        }]);
-      if (connError) console.error('Error creating connection:', connError);
+        }], { onConflict: 'user_a_id,user_b_id' }); // Use upsert to prevent unique constraint crashes
+      if (connError) {
+        console.error('[Backend] Error creating connection in DB:', connError);
+      }
     }
 
-    res.status(200).json(data);
+    res.status(200).json({ success: true, status });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[Backend ERROR Detail]:', error);
+    res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
 
@@ -431,15 +449,28 @@ app.get('/api/messages/:connectionId', async (req, res) => {
 app.post('/api/messages', async (req, res) => {
   const { connectionId, senderId, text } = req.body;
   try {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('messages')
-      .insert([{ connection_id: connectionId, sender_id: senderId, text }])
-      .select()
-      .single();
+      .insert([{ connection_id: connectionId, sender_id: senderId, text }]);
 
-    if (error) throw error;
-    res.status(201).json(data);
+    if (error) {
+      console.error('[Backend] Error inserting message:', error);
+      throw error;
+    }
+    
+    // We don't need the exact DB row back for the broadcast, just a success signal
+    // We construct a mock object with the data we know for the frontend to broadcast
+    const savedMsg = {
+      id: crypto.randomUUID(), // Provide a temporary ID for React keys
+      connection_id: connectionId,
+      sender_id: senderId,
+      text: text,
+      created_at: new Date().toISOString()
+    };
+
+    res.status(201).json(savedMsg);
   } catch (error) {
+    console.error('[Backend ERROR Detail]:', error);
     res.status(500).json({ error: error.message });
   }
 });

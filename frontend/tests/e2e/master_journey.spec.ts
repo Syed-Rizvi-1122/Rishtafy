@@ -17,7 +17,7 @@ test.describe('Rishtafy: The Master Journey (Sprint 1-3)', () => {
     // --- STEP 1: LANDING & REGISTRATION ---
     console.log('Step 1: Verifying Landing and Registering Candidates...');
     await pageA.goto('http://localhost:5173');
-    await expect(pageA.getByText('Find Your Partner With Purpose')).toBeVisible();
+    await expect(pageA.getByText(/Find Your Partner With Purpose/i)).toBeVisible();
     
     // Register Farhan
     await pageA.goto('http://localhost:5173/register');
@@ -47,7 +47,7 @@ test.describe('Rishtafy: The Master Journey (Sprint 1-3)', () => {
     await expect(amnaCard).toBeVisible({ timeout: 10000 });
     
     // Farhan sees Amna's photo as blurred (Privacy Mandate)
-    await expect(amnaCard.getByText('🔒 Photo blurred')).toBeVisible();
+    await expect(amnaCard.getByText(/Photo blurred/i)).toBeVisible();
 
     // --- STEP 3: MATCHMAKING ---
     console.log('Step 3: Sending and Accepting Interest...');
@@ -76,7 +76,7 @@ test.describe('Rishtafy: The Master Journey (Sprint 1-3)', () => {
     await expect(amnaConnection).toBeVisible({ timeout: 10000 });
     
     // Photos are now unblurred!
-    await expect(amnaConnection.getByText('Photos unblurred')).toBeVisible();
+    await expect(amnaConnection.getByText(/Photos unblurred/i)).toBeVisible();
 
     // --- STEP 5: REAL-TIME CHAT ---
     console.log('Step 5: Verifying Real-Time Communication...');

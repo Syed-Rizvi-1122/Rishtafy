@@ -1,3 +1,42 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+@layer components {
+  .premium-input {
+    @apply w-full rounded-xl border text-sm outline-none transition-all duration-200;
+    border-color: var(--color-neutral-100);
+    background-color: #FAFAFA;
+  }
+  
+  .premium-input:focus {
+    @apply ring-4;
+    border-color: var(--color-primary-900);
+    --tw-ring-color: rgba(11, 43, 36, 0.05);
+  }
+
+  .premium-card {
+    @apply bg-white rounded-3xl border shadow-sm transition-all duration-300;
+    border-color: var(--color-neutral-100);
+  }
+
+  .premium-card:hover {
+    @apply shadow-md;
+    border-color: var(--color-neutral-200);
+  }
+}
+
+/* Custom Scrollbar for Chat */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-200);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-400);
+}
