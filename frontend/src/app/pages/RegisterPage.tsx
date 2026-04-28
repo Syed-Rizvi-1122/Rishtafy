@@ -1,55 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Mail, User, Star, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Star, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Role } from '../types';
 
 export default function RegisterPage() {
-  const { register, socialUser } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ 
-    name: socialUser?.user_metadata?.full_name || '', 
-    email: socialUser?.email || '', 
-    candidateEmail: '' 
-  });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', candidateEmail: '' });
   const [role, setRole] = useState<Role>('candidate');
+  const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Protect this page - only for new social users completing setup
-  useEffect(() => {
-    if (!socialUser && !loading) {
-      navigate('/login', { replace: true });
-    }
-  }, [socialUser, navigate]);
-
-  // Pre-fill if socialUser changes
-  useEffect(() => {
-    if (socialUser) {
-      setForm(f => ({
-        ...f,
-        name: socialUser.user_metadata?.full_name || f.name,
-        email: socialUser.email || f.email
-      }));
-    }
-  }, [socialUser]);
 
   const update = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+    if (form.password !== form.confirmPassword) return setError('Passwords do not match.');
+    if (form.password.length < 8) return setError('Password must be at least 8 characters.');
     setLoading(true);
-    const result = await register(
-      form.name, 
-      form.email, 
-      null, // No password for social completion
-      role, 
-      form.candidateEmail
-    );
+    const result = await register(form.name, form.email, form.password, role, form.candidateEmail);
     setLoading(false);
-    
     if (result.success) {
       if (role === 'candidate') navigate('/profile/edit');
       else navigate('/guardian/dashboard');
@@ -60,8 +33,6 @@ export default function RegisterPage() {
 
   const inputClass = "w-full pl-9 pr-4 py-2.5 rounded-lg border text-sm outline-none transition-all";
   const inputStyle = { borderColor: 'var(--color-neutral-100)', backgroundColor: '#FAFAFA' };
-
-  if (!socialUser) return null;
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-neutral-50)' }}>
@@ -78,8 +49,8 @@ export default function RegisterPage() {
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--color-primary-900)' }}>
               <Star size={22} fill="var(--color-accent-500)" color="var(--color-accent-500)" />
             </div>
-            <h1 className="font-playfair text-3xl mb-1" style={{ color: 'var(--color-primary-900)' }}>Complete Your Profile</h1>
-            <p className="text-sm" style={{ color: 'var(--color-neutral-400)' }}>Just one more step to join the Rishtafy community</p>
+            <h1 className="font-playfair text-3xl mb-1" style={{ color: 'var(--color-primary-900)' }}>Create Account</h1>
+            <p className="text-sm" style={{ color: 'var(--color-neutral-400)' }}>Join Rishtafy to find your perfect match</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border p-8" style={{ borderColor: 'var(--color-neutral-100)' }}>
@@ -90,8 +61,9 @@ export default function RegisterPage() {
               </div>
             )}
 
+            {/* Role Selector */}
             <div className="mb-6">
-              <p className="text-sm mb-2" style={{ color: '#374151' }}>I am joining as:</p>
+              <p className="text-sm mb-2" style={{ color: '#374151' }}>I am registering as:</p>
               <div className="grid grid-cols-2 gap-3">
                 {(['candidate', 'guardian'] as Role[]).map(r => (
                   <button
@@ -109,6 +81,11 @@ export default function RegisterPage() {
                   </button>
                 ))}
               </div>
+              {role === 'guardian' && (
+                <div className="mt-3 p-3 rounded-lg text-xs" style={{ backgroundColor: 'rgba(197,165,90,0.1)', color: '#92400E' }}>
+                  As a guardian, you will manage your candidate's profile and review incoming interest requests on their behalf.
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -136,9 +113,13 @@ export default function RegisterPage() {
                   <input
                     type="email"
                     value={form.email}
-                    readOnly
+                    onChange={e => update('email', e.target.value)}
+                    required
+                    placeholder="your@email.com"
                     className={inputClass}
-                    style={{ ...inputStyle, opacity: 0.7 }}
+                    style={inputStyle}
+                    onFocus={e => e.target.style.borderColor = 'var(--color-primary-900)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--color-neutral-100)'}
                   />
                 </div>
               </div>
@@ -161,22 +142,58 @@ export default function RegisterPage() {
                   </div>
                 </div>
               )}
-
+              <div>
+                <label className="block text-sm mb-1.5" style={{ color: '#374151' }}>Password</label>
+                <div className="relative">
+                  <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+                  <input
+                    type={showPwd ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={e => update('password', e.target.value)}
+                    required
+                    placeholder="Min. 8 characters"
+                    className={`${inputClass} pr-10`}
+                    style={inputStyle}
+                    onFocus={e => e.target.style.borderColor = 'var(--color-primary-900)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--color-neutral-100)'}
+                  />
+                  <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }}>
+                    {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm mb-1.5" style={{ color: '#374151' }}>Confirm Password</label>
+                <div className="relative">
+                  <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+                  <input
+                    type="password"
+                    value={form.confirmPassword}
+                    onChange={e => update('confirmPassword', e.target.value)}
+                    required
+                    placeholder="Re-enter password"
+                    className={inputClass}
+                    style={inputStyle}
+                    onFocus={e => e.target.style.borderColor = 'var(--color-primary-900)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--color-neutral-100)'}
+                  />
+                </div>
+              </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-60 mt-4"
+                className="w-full py-3 rounded-xl text-white font-medium text-sm transition-all hover:opacity-90 disabled:opacity-60 mt-2"
                 style={{ backgroundColor: 'var(--color-accent-500)' }}
               >
-                {loading ? 'Completing Profile...' : 'Complete Registration'}
+                {loading ? 'Creating Account...' : 'Create Account'}
               </button>
             </form>
 
-            <p className="text-center text-sm mt-6" style={{ color: 'var(--color-neutral-400)' }}>
-              Want to use a different account?{' '}
-              <button onClick={() => navigate('/login')} className="font-medium bg-transparent border-none p-0 cursor-pointer" style={{ color: 'var(--color-accent-500)' }}>
+            <p className="text-center text-sm mt-5" style={{ color: 'var(--color-neutral-400)' }}>
+              Already have an account?{' '}
+              <Link to="/login" className="font-medium no-underline" style={{ color: 'var(--color-accent-500)' }}>
                 Sign in
-              </button>
+              </Link>
             </p>
           </div>
         </div>
