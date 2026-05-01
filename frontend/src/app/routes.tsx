@@ -2,6 +2,8 @@ import { createBrowserRouter } from 'react-router';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import OnboardingPage from './pages/OnboardingPage';
+import AuthCallback from './pages/AuthCallback';
 
 // Candidate pages
 import CandidateDashboard from './pages/candidate/Dashboard';
@@ -41,6 +43,8 @@ export const router = createBrowserRouter([
   { path: '/', Component: LandingPage },
   { path: '/login', Component: LoginPage },
   { path: '/register', Component: RegisterPage },
+  { path: '/onboarding', Component: OnboardingPage },
+  { path: '/auth/callback', Component: AuthCallback },
 
   // Candidate routes (layout embedded in each component)
   { path: '/dashboard', Component: CandidateDashboard },

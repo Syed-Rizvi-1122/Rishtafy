@@ -32,7 +32,7 @@ describe('Backend API Unit Tests', () => {
       .post('/api/interests')
       .send({ senderId: 'abc' }); // Missing receiverId
     
-    expect(response.status).toBe(500); // Current implementation throws error on missing fields
+    expect(response.status).toBe(400); 
   });
 
   test('GET /api/interests/:userId should return a list', async () => {

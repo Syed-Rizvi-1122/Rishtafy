@@ -19,7 +19,7 @@ export default function Search() {
   const fetchProfiles = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/profiles');
+      const response = await fetch('http://127.0.0.1:3001/api/profiles');
       const data = await response.json();
       if (response.ok) {
         console.log(`[Search Telemetry] Received ${data.length} profiles from API`);
@@ -36,7 +36,7 @@ export default function Search() {
   const handleSendInterest = async (receiverId: string) => {
     if (!user) return;
     try {
-      const response = await fetch('http://localhost:3001/api/interests', {
+      const response = await fetch('http://127.0.0.1:3001/api/interests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

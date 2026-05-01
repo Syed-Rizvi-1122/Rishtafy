@@ -17,7 +17,7 @@ export default function Connections() {
   const fetchConnections = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/connections/${user?.id}`);
+      const response = await fetch(`http://127.0.0.1:3001/api/connections/${user?.id}`);
       const data = await response.json();
       if (response.ok) {
         setConnections(data);

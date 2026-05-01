@@ -16,7 +16,7 @@ export default function GuardianRequests() {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/interests/${user?.id}`);
+      const response = await fetch(`http://127.0.0.1:3001/api/interests/${user?.id}`);
       const data = await response.json();
       if (response.ok) {
         // For guardian, we show requests where they are the guardian and status is pending_guardian
@@ -31,7 +31,7 @@ export default function GuardianRequests() {
 
   const handleApprove = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/interests/${id}`, {
+      const response = await fetch(`http://127.0.0.1:3001/api/interests/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'pending_candidate' })
@@ -47,7 +47,7 @@ export default function GuardianRequests() {
 
   const handleDecline = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/interests/${id}`, {
+      const response = await fetch(`http://127.0.0.1:3001/api/interests/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'declined' })

@@ -188,6 +188,85 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// OAuth Sync Check
+app.get('/api/auth/oauth-sync', async (req, res) => {
+  const { id } = req.query;
+  if (!id) return res.status(400).json({ error: 'Missing user ID' });
+
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, email, role, is_verified, is_active')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return res.status(200).json({ user: null });
+      throw error;
+    }
+
+    res.status(200).json({
+      user: {
+        id: data.id,
+        email: data.email,
+        role: data.role,
+        isVerified: data.is_verified,
+        isActive: data.is_active,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// OAuth Full Sync (Onboarding Completion)
+app.post('/api/auth/oauth-sync', async (req, res) => {
+  const { id, email, full_name, role, candidateEmail } = req.body;
+
+  if (!id || !email || !full_name || !role) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    // 1. Sync to public.users
+    const { error: dbError } = await supabase
+      .from('users')
+      .upsert([{ id, email, role: role.toLowerCase() }], { onConflict: 'id' });
+
+    if (dbError) throw dbError;
+
+    // 2. Sync to profiles
+    if (role.toLowerCase() === 'candidate') {
+      await supabase.from('profiles').upsert([{ user_id: id, full_name }], { onConflict: 'user_id' });
+    }
+
+    // 3. Link guardian if needed
+    if (role.toLowerCase() === 'guardian' && candidateEmail) {
+      const { data: candidateData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', candidateEmail)
+        .eq('role', 'candidate')
+        .single();
+
+      if (candidateData) {
+        await supabase.from('guardian_links').upsert([{
+          guardian_user_id: id,
+          candidate_user_id: candidateData.id,
+          status: 'pending'
+        }], { onConflict: 'guardian_user_id' });
+      }
+    }
+
+    res.status(200).json({
+      message: 'OAuth profile synced',
+      user: { id, email, name: full_name, role }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Profile Update Route
 app.put('/api/profiles/:userId', async (req, res) => {
   const { userId } = req.params;
@@ -449,26 +528,18 @@ app.get('/api/messages/:connectionId', async (req, res) => {
 app.post('/api/messages', async (req, res) => {
   const { connectionId, senderId, text } = req.body;
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('messages')
-      .insert([{ connection_id: connectionId, sender_id: senderId, text }]);
+      .insert([{ connection_id: connectionId, sender_id: senderId, text }])
+      .select()
+      .single();
 
     if (error) {
       console.error('[Backend] Error inserting message:', error);
       throw error;
     }
     
-    // We don't need the exact DB row back for the broadcast, just a success signal
-    // We construct a mock object with the data we know for the frontend to broadcast
-    const savedMsg = {
-      id: crypto.randomUUID(), // Provide a temporary ID for React keys
-      connection_id: connectionId,
-      sender_id: senderId,
-      text: text,
-      created_at: new Date().toISOString()
-    };
-
-    res.status(201).json(savedMsg);
+    res.status(201).json(data);
   } catch (error) {
     console.error('[Backend ERROR Detail]:', error);
     res.status(500).json({ error: error.message });

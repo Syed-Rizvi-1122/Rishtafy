@@ -16,11 +16,11 @@ test.describe('Rishtafy: The Master Journey (Sprint 1-3)', () => {
 
     // --- STEP 1: LANDING & REGISTRATION ---
     console.log('Step 1: Verifying Landing and Registering Candidates...');
-    await pageA.goto('http://localhost:5173');
+    await pageA.goto('http://127.0.0.1:5173');
     await expect(pageA.getByText(/Find Your Partner With Purpose/i)).toBeVisible();
     
     // Register Farhan
-    await pageA.goto('http://localhost:5173/register');
+    await pageA.goto('http://127.0.0.1:5173/register');
     await pageA.getByPlaceholder('Your full name').fill(userAName);
     await pageA.getByPlaceholder('your@email.com').fill(userAEmail);
     await pageA.getByPlaceholder('Min. 8 characters').fill('password123');
@@ -30,7 +30,7 @@ test.describe('Rishtafy: The Master Journey (Sprint 1-3)', () => {
     await expect(pageA).toHaveURL(/.*profile\/edit/);
 
     // Register Amna
-    await pageB.goto('http://localhost:5173/register');
+    await pageB.goto('http://127.0.0.1:5173/register');
     await pageB.getByPlaceholder('Your full name').fill(userBName);
     await pageB.getByPlaceholder('your@email.com').fill(userBEmail);
     await pageB.getByPlaceholder('Min. 8 characters').fill('password123');
@@ -41,7 +41,7 @@ test.describe('Rishtafy: The Master Journey (Sprint 1-3)', () => {
 
     // --- STEP 2: SEARCH & PRIVACY ---
     console.log('Step 2: Searching and Verifying Privacy (Photo Blurring)...');
-    await pageA.goto('http://localhost:5173/search');
+    await pageA.goto('http://127.0.0.1:5173/search');
     await pageA.waitForLoadState('networkidle');
     const amnaCard = pageA.locator('.profile-card').filter({ hasText: userBName }).first();
     await expect(amnaCard).toBeVisible({ timeout: 10000 });
@@ -57,7 +57,7 @@ test.describe('Rishtafy: The Master Journey (Sprint 1-3)', () => {
     await dialog.accept();
 
     // Amna sees the request
-    await pageB.goto('http://localhost:5173/requests');
+    await pageB.goto('http://127.0.0.1:5173/requests');
     const farhanRequest = pageB.locator('.request-card').filter({ hasText: userAName }).first();
     await expect(farhanRequest).toBeVisible({ timeout: 10000 });
     
@@ -71,7 +71,7 @@ test.describe('Rishtafy: The Master Journey (Sprint 1-3)', () => {
     console.log('Step 4: Verifying the Connection and Photo Reveal...');
     // Farhan goes to connections
     await pageA.waitForTimeout(2000); // Allow DB sync
-    await pageA.goto('http://localhost:5173/connections');
+    await pageA.goto('http://127.0.0.1:5173/connections');
     const amnaConnection = pageA.locator('.bg-white').filter({ hasText: userBName }).first();
     await expect(amnaConnection).toBeVisible({ timeout: 10000 });
     
@@ -83,7 +83,7 @@ test.describe('Rishtafy: The Master Journey (Sprint 1-3)', () => {
     await amnaConnection.getByRole('button', { name: 'Chat' }).click();
     
     // Amna enters chat
-    await pageB.goto('http://localhost:5173/connections');
+    await pageB.goto('http://127.0.0.1:5173/connections');
     await pageB.locator('.bg-white').filter({ hasText: userAName }).first().getByRole('button', { name: 'Chat' }).click();
 
     // WAIT for both to be online (Synchronization)

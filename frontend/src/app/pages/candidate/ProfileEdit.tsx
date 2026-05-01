@@ -39,7 +39,7 @@ export default function ProfileEdit() {
     if (!user) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/api/profiles/${user.id}`, {
+      const response = await fetch(`http://127.0.0.1:3001/api/profiles/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)

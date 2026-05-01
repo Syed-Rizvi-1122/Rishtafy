@@ -15,7 +15,7 @@ test.describe('Real-Time Chat and Privacy Flow (Sprint 3)', () => {
     const pageB = await contextB.newPage();
 
     // 1. Register User A
-    await pageA.goto('http://localhost:5173/register');
+    await pageA.goto('http://127.0.0.1:5173/register');
     await pageA.getByPlaceholder('Your full name').fill(userAName);
     await pageA.getByPlaceholder('your@email.com').fill(userAEmail);
     await pageA.getByPlaceholder('Min. 8 characters').fill('password123');
@@ -25,7 +25,7 @@ test.describe('Real-Time Chat and Privacy Flow (Sprint 3)', () => {
     await expect(pageA).toHaveURL(/.*profile\/edit/);
 
     // 2. Register User B
-    await pageB.goto('http://localhost:5173/register');
+    await pageB.goto('http://127.0.0.1:5173/register');
     await pageB.getByPlaceholder('Your full name').fill(userBName);
     await pageB.getByPlaceholder('your@email.com').fill(userBEmail);
     await pageB.getByPlaceholder('Min. 8 characters').fill('password123');
@@ -35,7 +35,7 @@ test.describe('Real-Time Chat and Privacy Flow (Sprint 3)', () => {
     await expect(pageB).toHaveURL(/.*profile\/edit/);
 
     // 3. User A searches and sends interest to User B
-    await pageA.goto('http://localhost:5173/search');
+    await pageA.goto('http://127.0.0.1:5173/search');
     await pageA.waitForLoadState('networkidle');
     const userBCard = pageA.locator('.profile-card').filter({ hasText: userBName }).first();
     await expect(userBCard).toBeVisible({ timeout: 10000 });
@@ -49,7 +49,7 @@ test.describe('Real-Time Chat and Privacy Flow (Sprint 3)', () => {
     await dialog.accept();
 
     // 4. User B accepts the interest
-    await pageB.goto('http://localhost:5173/requests');
+    await pageB.goto('http://127.0.0.1:5173/requests');
     const requestCard = pageB.locator('.request-card').filter({ hasText: userAName }).first();
     await expect(requestCard).toBeVisible({ timeout: 10000 });
     
@@ -62,14 +62,14 @@ test.describe('Real-Time Chat and Privacy Flow (Sprint 3)', () => {
     // 5. User A goes to Connections and sees User B (Unblurred)
     // Small wait to allow the connection insertion to finish in the background
     await pageA.waitForTimeout(2000); 
-    await pageA.goto('http://localhost:5173/connections');
+    await pageA.goto('http://127.0.0.1:5173/connections');
     const connectionCardA = pageA.locator('.bg-white').filter({ hasText: userBName }).first();
     await expect(connectionCardA).toBeVisible({ timeout: 10000 });
     // Privacy Check: "Photos unblurred" text should be visible in the connection card footer
     await expect(connectionCardA.getByText('Photos unblurred')).toBeVisible();
 
     // 6. User B goes to Connections and sees User A
-    await pageB.goto('http://localhost:5173/connections');
+    await pageB.goto('http://127.0.0.1:5173/connections');
     const connectionCardB = pageB.locator('.bg-white').filter({ hasText: userAName }).first();
     await expect(connectionCardB).toBeVisible({ timeout: 10000 });
 
@@ -82,6 +82,11 @@ test.describe('Real-Time Chat and Privacy Flow (Sprint 3)', () => {
     // User B enters chat
     await connectionCardB.getByRole('button', { name: 'Chat' }).click();
     await expect(pageB).toHaveURL(/.*chat\/.*/);
+
+    // WAIT for both to be online (Synchronization)
+    // This is critical for real-time broadcast to work reliably in tests
+    await expect(pageA.locator('.online-status')).toBeVisible({ timeout: 15000 });
+    await expect(pageB.locator('.online-status')).toBeVisible({ timeout: 15000 });
 
     // User A sends a message
     const testMessage = `Hello from User A! Code: ${uniqueId}`;

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Role } from '../types';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', candidateEmail: '' });
   const [role, setRole] = useState<Role>('candidate');

@@ -78,11 +78,11 @@ export default function Chat() {
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const msgRes = await fetch(`http://localhost:3001/api/messages/${connectionId}`);
+      const msgRes = await fetch(`http://127.0.0.1:3001/api/messages/${connectionId}`);
       const msgData = await msgRes.json();
       if (msgRes.ok) setMessages(msgData);
 
-      const connRes = await fetch(`http://localhost:3001/api/connections/${user?.id}`);
+      const connRes = await fetch(`http://127.0.0.1:3001/api/connections/${user?.id}`);
       const connData = await connRes.json();
       if (connRes.ok) {
         const conn = connData.find((c: any) => c.id === connectionId);
@@ -131,12 +131,18 @@ export default function Chat() {
 
     try {
       // 1. Send to Backend (Persistence)
-      const response = await fetch('http://localhost:3001/api/messages', {
+      const response = await fetch('http://127.0.0.1:3001/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ connectionId, senderId: user.id, text })
       });
       const savedMsg = await response.json();
+
+      // Update local state immediately for the sender
+      setMessages(prev => {
+        if (prev.some(m => m.id === savedMsg.id)) return prev;
+        return [...prev, savedMsg];
+      });
 
       // 2. Broadcast to Peer (Low Latency) using the persistent channel
       if (channelRef.current) {

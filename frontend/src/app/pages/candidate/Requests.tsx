@@ -17,7 +17,7 @@ export default function Requests() {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/interests/${user?.id}`);
+      const response = await fetch(`http://127.0.0.1:3001/api/interests/${user?.id}`);
       const data = await response.json();
       if (response.ok) {
         setRequests(data);
@@ -37,7 +37,7 @@ export default function Requests() {
 
   const handleAccept = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/interests/${id}`, {
+      const response = await fetch(`http://127.0.0.1:3001/api/interests/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'accepted' })
@@ -56,7 +56,7 @@ export default function Requests() {
 
   const handleDecline = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/interests/${id}`, {
+      const response = await fetch(`http://127.0.0.1:3001/api/interests/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'declined' })
